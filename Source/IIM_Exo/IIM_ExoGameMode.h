@@ -13,6 +13,16 @@ class AIIM_ExoGameMode : public AGameModeBase
 
 public:
 	AIIM_ExoGameMode();
+
+	UFUNCTION()
+	void Respawn();
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	void Test();
+
 };
 
 
