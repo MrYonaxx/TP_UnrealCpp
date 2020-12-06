@@ -19,9 +19,18 @@ class IIM_EXO_API AItemWeapon : public AItem
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Mesh, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* MuzzleLocation;
 
+
+	int ammoLoaded = 0;
+
 public:
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 	TSubclassOf<class ABaseProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UItemDataAsset* AmmoData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Weapon)
+	int magazineSize = 8;
 
 
 public:
@@ -30,5 +39,9 @@ public:
 	void Shoot(FRotator SpawnRotation);
 	bool CanShoot();
 	void SetPhysics(bool b);
+
+	bool IsLoaded();
+	void Reload(int ammo);
+
 	
 };

@@ -35,18 +35,28 @@ void AItemWeapon::Shoot(FRotator SpawnRotation)
 			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
 			World->SpawnActor<ABaseProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			ammoLoaded -= 1;
 		}
 	}
 }
 
-// Prend l'inventaire ou une liste d'objet
-// Check si la munition est dedans
 bool AItemWeapon::CanShoot()
 {
-	return true;
+	return (ammoLoaded != 0);
+	//return true;
 }
 
 void AItemWeapon::SetPhysics(bool b)
 {
 	Mesh->SetSimulatePhysics(b);
+}
+
+bool AItemWeapon::IsLoaded()
+{
+	return (ammoLoaded != 0);
+}
+
+void AItemWeapon::Reload(int ammo)
+{
+	ammoLoaded += ammo;
 }

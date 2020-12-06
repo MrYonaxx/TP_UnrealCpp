@@ -254,10 +254,32 @@ void AIIM_ExoCharacter::OnFire()
 {
 	if (weaponEquiped != nullptr) 
 	{
-		weaponEquiped->Shoot(GetControlRotation());
+		if (weaponEquiped->CanShoot()) 
+		{
+			weaponEquiped->Shoot(GetControlRotation());
+		}
+		else 
+		{
+			int ammoToAdd = 0;
+			for (size_t i = 0; i < weaponEquiped->magazineSize; i++)
+			{
+				if (Inventory->RemoveItem(weaponEquiped->AmmoData) == false)
+					break;
+				ammoToAdd += 1;
+			}
+			if (ammoToAdd != 0)
+			{
+				Reload();
+				weaponEquiped->Reload(ammoToAdd);
+			}
+		}
 	}
 }
 
+void AIIM_ExoCharacter::Reload()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Reload"));
+}
 
 
 
@@ -350,6 +372,7 @@ void AIIM_ExoCharacter::PickObject()
 
 
 }
+
 
 
 
