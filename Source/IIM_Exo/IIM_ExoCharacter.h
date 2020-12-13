@@ -12,6 +12,7 @@
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTestDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FShootDelegate, int, Ammo);
 
 UENUM(BlueprintType)
 enum class CharacterState : uint8 {
@@ -52,6 +53,8 @@ class AIIM_ExoCharacter : public ACharacter
 	class AItemWeapon* weaponEquiped;
 
 	bool aimOn = false;
+	bool reloading = false;
+	bool isHit = false;
 	FTimeline TimelineAimZoom;
 	FTimeline TimelineAimDezoom;
 
@@ -93,6 +96,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Timeline")
 	UCurveFloat* curveFloatReverse;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Anim)
+	UAnimMontage* ReloadMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Anim)
+	UAnimMontage* HitMontage;
+
+	UPROPERTY(BlueprintAssignable, Category = "Test")
+	FShootDelegate OnShoot;
+
 
 protected:
 
@@ -131,6 +142,7 @@ protected:
 	void PickObject();
 
 	void Reload();
+	void EndReload(UAnimMontage* Montage, bool bInterrupted);
 
 	// à bouger ?
 	void PauseGame();
@@ -158,7 +170,12 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UInventorySystem* GetInventory() const { return Inventory; }
 
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE class AItemWeapon* GetWeapon() const { return weaponEquiped; }
+
+	UFUNCTION(BlueprintCallable)
 	void TakeDamage(float damage);
+	void EndTakeDamage(UAnimMontage* Montage, bool bInterrupted);
 	void CharaCrouch();
 
 	UFUNCTION(BlueprintCallable)

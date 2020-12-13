@@ -15,6 +15,7 @@ AIIM_ExoGameMode::AIIM_ExoGameMode()
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 
 	}
+	respawnLocation = FVector(-920.0f, 8.0f, 120.0f);
 
 }
 
@@ -45,10 +46,16 @@ void AIIM_ExoGameMode::Respawn()
 {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Ded1"));
 
-	FVector Location(-770.0f, 370.0f, 240.0f);
+	//FVector Location(-770.0f, 370.0f, 240.0f);
 	FRotator Rotation(0.0f, 0.0f, 0.0f);
 	FActorSpawnParameters SpawnInfo;
-	AIIM_ExoCharacter* tmp = GetWorld()->SpawnActor<AIIM_ExoCharacter>(DefaultPawnClass, Location, Rotation, SpawnInfo);
+	AIIM_ExoCharacter* tmp = GetWorld()->SpawnActor<AIIM_ExoCharacter>(DefaultPawnClass, respawnLocation, Rotation, SpawnInfo);
 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->Possess(tmp);
 	tmp->OnDeath.AddDynamic(this, &AIIM_ExoGameMode::Respawn);
+
+}
+
+void AIIM_ExoGameMode::SetRespawnLocation(FVector newPosition)
+{
+	respawnLocation = newPosition;
 }

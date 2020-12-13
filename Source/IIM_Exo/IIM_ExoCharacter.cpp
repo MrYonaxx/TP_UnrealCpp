@@ -15,7 +15,6 @@
 
 #include "DrawDebugHelpers.h"
 
-
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -51,6 +50,7 @@ AIIM_ExoCharacter::AIIM_ExoCharacter()
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
+	CameraBoom->SetMobility(EComponentMobility::Movable);
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -166,6 +166,7 @@ void AIIM_ExoCharacter::LookUpAtRate(float Rate)
 
 void AIIM_ExoCharacter::MoveForward(float Value)
 {
+	if (isHit == true) return;
 	if (bIsCrouched == true)
 		return;
 	if ((Controller != NULL) && (Value != 0.0f))
@@ -194,6 +195,7 @@ void AIIM_ExoCharacter::MoveForward(float Value)
 
 void AIIM_ExoCharacter::MoveRight(float Value)
 {
+	if (isHit == true) return;
 	if (bIsCrouched == true)
 		return;
 	if ( (Controller != NULL) && (Value != 0.0f) )
@@ -252,36 +254,105 @@ void AIIM_ExoCharacter::EquipWeapon(TSubclassOf<class AItemWeapon> weapon)
 
 void AIIM_ExoCharacter::OnFire()
 {
+	if (reloading == true) return;
+	if (isHit == true) return;
 	if (weaponEquiped != nullptr) 
 	{
 		if (weaponEquiped->CanShoot()) 
 		{
 			weaponEquiped->Shoot(GetControlRotation());
+			OnShoot.Broadcast(weaponEquiped->GetAmmoLoaded());
 		}
 		else 
 		{
-			int ammoToAdd = 0;
-			for (size_t i = 0; i < weaponEquiped->magazineSize; i++)
-			{
-				if (Inventory->RemoveItem(weaponEquiped->AmmoData) == false)
-					break;
-				ammoToAdd += 1;
-			}
-			if (ammoToAdd != 0)
-			{
-				Reload();
-				weaponEquiped->Reload(ammoToAdd);
-			}
+			Reload();
+			OnShoot.Broadcast(weaponEquiped->GetAmmoLoaded());
 		}
 	}
 }
 
 void AIIM_ExoCharacter::Reload()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Reload"));
+	int ammoToAdd = 0;
+	for (size_t i = 0; i < weaponEquiped->magazineSize - weaponEquiped->GetAmmoLoaded(); i++)
+	{
+		if (Inventory->RemoveItem(weaponEquiped->AmmoData, false) == false)
+			break;
+		ammoToAdd += 1;
+	}
+	if (ammoToAdd != 0)
+	{
+		weaponEquiped->Reload(ammoToAdd);
+
+		bool bPlayedSuccessfully = false;
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			const float MontageLength = AnimInstance->Montage_Play(ReloadMontage);
+			bPlayedSuccessfully = (MontageLength > 0.f);
+
+			if (bPlayedSuccessfully)
+			{
+				// Memory leak peut etre ? je sais pas
+				FOnMontageEnded EndDelegate;
+				EndDelegate.BindUObject(this, &AIIM_ExoCharacter::EndReload);
+				AnimInstance->Montage_SetEndDelegate(EndDelegate, ReloadMontage);
+				reloading = true;
+			}
+		}
+	}
+
+
 }
 
+void AIIM_ExoCharacter::EndReload(UAnimMontage* Montage, bool bInterrupted)
+{
+	reloading = false;
+}
 
+/*void UPlayMontageCallbackProxy::PlayMontage(class USkeletalMeshComponent* InSkeletalMeshComponent,
+	class UAnimMontage* MontageToPlay,
+	float PlayRate,
+	float StartingPosition,
+	FName StartingSection)
+{
+	bool bPlayedSuccessfully = false;
+	if (InSkeletalMeshComponent)
+	{
+		if (UAnimInstance* AnimInstance = InSkeletalMeshComponent->GetAnimInstance())
+		{
+			const float MontageLength = AnimInstance->Montage_Play(MontageToPlay, PlayRate, EMontagePlayReturnType::MontageLength, StartingPosition);
+			bPlayedSuccessfully = (MontageLength > 0.f);
+
+			if (bPlayedSuccessfully)
+			{
+				AnimInstancePtr = AnimInstance;
+				if (FAnimMontageInstance* MontageInstance = AnimInstance->GetActiveInstanceForMontage(MontageToPlay))
+				{
+					MontageInstanceID = MontageInstance->GetInstanceID();
+				}
+
+				if (StartingSection != NAME_None)
+				{
+					AnimInstance->Montage_JumpToSection(StartingSection, MontageToPlay);
+				}
+
+				BlendingOutDelegate.BindUObject(this, &UPlayMontageCallbackProxy::OnMontageBlendingOut);
+				AnimInstance->Montage_SetBlendingOutDelegate(BlendingOutDelegate, MontageToPlay);
+
+				MontageEndedDelegate.BindUObject(this, &UPlayMontageCallbackProxy::OnMontageEnded);
+				AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, MontageToPlay);
+
+				AnimInstance->OnPlayMontageNotifyBegin.AddDynamic(this, &UPlayMontageCallbackProxy::OnNotifyBeginReceived);
+				AnimInstance->OnPlayMontageNotifyEnd.AddDynamic(this, &UPlayMontageCallbackProxy::OnNotifyEndReceived);
+			}
+		}
+	}
+
+	if (!bPlayedSuccessfully)
+	{
+		OnInterrupted.Broadcast(NAME_None);
+	}
+}*/
 
 
 void AIIM_ExoCharacter::Aim()
@@ -319,11 +390,17 @@ void AIIM_ExoCharacter::TimelineZoomProgress(float val)
 
 void AIIM_ExoCharacter::PickObject() 
 {
+	if (aimOn == true && weaponEquiped != nullptr) 
+	{
+		Reload();
+		OnShoot.Broadcast(weaponEquiped->GetAmmoLoaded());
+		return;
+	}
 	IIInteractable* s = PickupComponent->InteractWithFirstObject();
 	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("J'interagis"));
 	if (s)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("J'interagis bien"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("J'interagis bien"));
 		s->Execute_Interact(Cast<UObject>(s), this);
 		//PickupComponent->RemoveObjectFromList();
 	}
@@ -382,6 +459,8 @@ void AIIM_ExoCharacter::TakeDamage(float damage)
 {
 	health -= damage;
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, FString::Printf(TEXT("%f"), health));
+
+
 	if (health <= 0) 
 	{
 		// Death
@@ -400,7 +479,44 @@ void AIIM_ExoCharacter::TakeDamage(float damage)
 		Destroy();
 		
 	}
+	else 
+	{
+		bool bPlayedSuccessfully = false;
+		if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+		{
+			const float MontageLength = AnimInstance->Montage_Play(HitMontage);
+			bPlayedSuccessfully = (MontageLength > 0.f);
+
+			if (bPlayedSuccessfully)
+			{
+				// Memory leak peut etre vu que j'unbind pas ? je sais pas
+				FOnMontageEnded EndDelegate;
+				EndDelegate.BindUObject(this, &AIIM_ExoCharacter::EndTakeDamage);
+				AnimInstance->Montage_SetEndDelegate(EndDelegate, HitMontage);
+				isHit = true;
+				reloading = false;
+			}
+		}
+	}
 }
+
+void AIIM_ExoCharacter::EndTakeDamage(UAnimMontage* Montage, bool bInterrupted)
+{
+	isHit = false;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Le nom c'est pour pas masqué la fonction parent
 void AIIM_ExoCharacter::CharaCrouch()
@@ -435,11 +551,13 @@ void AIIM_ExoCharacter::CharaCrouch()
 
 void AIIM_ExoCharacter::PauseGame()
 {
+	if (isHit == true) return;
 	CurrentWidget = CreateWidget<UUserWidget>(GetWorld(), pauseHUD);
 	CurrentWidget->AddToViewport();
 
 	FInputModeUIOnly mode;
 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->SetInputMode(mode);
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->SetPause(true);
 	//Ptit mémo : Ok donc UgameplayStatic c'est optionnel en fait
 	GetWorld()->GetFirstPlayerController()->bShowMouseCursor = true;
 }
@@ -449,5 +567,6 @@ void AIIM_ExoCharacter::ResumeGame()
 	CurrentWidget->RemoveFromViewport();
 	FInputModeGameOnly mode;
 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->SetInputMode(mode);
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->SetPause(false);
 	GetWorld()->GetFirstPlayerController()->bShowMouseCursor = false;
 }

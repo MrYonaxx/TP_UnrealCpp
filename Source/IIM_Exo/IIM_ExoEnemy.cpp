@@ -54,6 +54,7 @@ FVector AIIM_ExoEnemy::GetWaypoint()
 		return GetActorLocation();*/
 	if (waypoints.Num() == 0)
 		return GetActorLocation();
+
 	indexWaypoint += 1;
 	if (indexWaypoint >= waypoints.Num())
 		indexWaypoint = 0;

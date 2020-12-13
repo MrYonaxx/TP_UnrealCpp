@@ -14,9 +14,10 @@ UInventorySystem::UInventorySystem()
 	inventoryCapacity = 9;
 }
 
-bool UInventorySystem::AddItem(UItemDataAsset* item)
+
+bool UInventorySystem::AddItem(UItemDataAsset* item, bool broadcast)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Hmm"));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Hmm"));
 	if (item == nullptr)
 		return false;
 	int position = -1;
@@ -40,10 +41,30 @@ bool UInventorySystem::AddItem(UItemDataAsset* item)
 		return false;
 	inventory[position] = item;
 	itemQuantity[position] += 1;
+	if(broadcast == true)
+		OnInventoryUpdated.Broadcast(item, 1);
 	return true;
 }
 
-bool UInventorySystem::RemoveItem(UItemDataAsset* item)
+// Si retourne 0 alors tout a été ajouté
+int UInventorySystem::AddItemMultiple(UItemDataAsset* item, int number) 
+{
+	int numberRemaining = number;
+	for (size_t i = 0; i < number; i++)
+	{
+		if (AddItem(item, false) == false) 
+		{
+			break;
+		}
+		numberRemaining -= 1;
+	}
+	if(numberRemaining != number)
+		OnInventoryUpdated.Broadcast(item, number-numberRemaining);
+	return numberRemaining;
+}
+
+
+bool UInventorySystem::RemoveItem(UItemDataAsset* item, bool broadcast)
 {
 	if (item == nullptr)
 		return false;
@@ -55,10 +76,25 @@ bool UInventorySystem::RemoveItem(UItemDataAsset* item)
 			itemQuantity[i] -= 1;
 			if (itemQuantity[i] == 0)
 				inventory[i] = nullptr;
+			//if (broadcast == true)
+			OnInventoryUpdated.Broadcast(item, 1);
 			return true;
 		}
 	}
 	return false; // L'objet n'est pas dans l'inventaire
+}
+
+int UInventorySystem::GetTotalItemQuantity(UItemDataAsset* item)
+{
+	int res = 0;
+	for (size_t i = 0; i < inventoryCapacity; i++)
+	{
+		if (inventory[i] == item)
+		{
+			res += itemQuantity[i];
+		}
+	}
+	return res;
 }
 
 

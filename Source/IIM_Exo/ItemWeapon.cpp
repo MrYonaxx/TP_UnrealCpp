@@ -51,6 +51,11 @@ void AItemWeapon::SetPhysics(bool b)
 	Mesh->SetSimulatePhysics(b);
 }
 
+int AItemWeapon::GetAmmoLoaded()
+{
+	return ammoLoaded;
+}
+
 bool AItemWeapon::IsLoaded()
 {
 	return (ammoLoaded != 0);

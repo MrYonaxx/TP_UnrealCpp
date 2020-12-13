@@ -2,10 +2,14 @@
 
 #pragma once
 
+#include "Delegates/Delegate.h" 
 #include "CoreMinimal.h"
 #include "Item.h"
 #include "Components/ActorComponent.h"
 #include "InventorySystem.generated.h"
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FInventoryUpdated, UItemDataAsset*, Item, int, Quantity);
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -28,6 +32,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Inventory)
 	int inventoryCapacity;
 
+	UPROPERTY(BlueprintAssignable, Category = "Test")
+	FInventoryUpdated OnInventoryUpdated;
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -37,13 +44,27 @@ public:
 	//virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable)
-	bool AddItem(UItemDataAsset* item);
+	bool AddItem(UItemDataAsset* item, bool broadcast = true);
+	UFUNCTION(BlueprintCallable)
+	int AddItemMultiple(UItemDataAsset* item, int number);
 
 	UFUNCTION(BlueprintCallable)
-	bool RemoveItem(UItemDataAsset* item);
+	bool RemoveItem(UItemDataAsset* item, bool broadcast = true);
+
+	UFUNCTION(BlueprintCallable)
+	int GetTotalItemQuantity(UItemDataAsset* item);
 
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE TArray<UItemDataAsset*> GetItems() const { return inventory; }
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE TArray<int> GetItemsQuantity() const { return itemQuantity; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetItems(TArray<UItemDataAsset*> newInventory) { inventory = newInventory; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetItemsQuantity(TArray<int> newInventoryQuantity) { itemQuantity = newInventoryQuantity; }
+
 
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE int GetItemQuantity(int index) const { return itemQuantity[index]; }

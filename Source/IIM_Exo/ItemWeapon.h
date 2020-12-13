@@ -40,6 +40,7 @@ public:
 	bool CanShoot();
 	void SetPhysics(bool b);
 
+	int GetAmmoLoaded();
 	bool IsLoaded();
 	void Reload(int ammo);
 

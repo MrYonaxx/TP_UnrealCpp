@@ -47,6 +47,9 @@ public:
 	int maxStack;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FText itemDescription;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<class AItem> itemBehaviour;
 };
 
